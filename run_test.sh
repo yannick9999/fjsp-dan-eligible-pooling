@@ -6,7 +6,7 @@
 #SBATCH --cpus-per-task=24
 #SBATCH --gpus-per-node=1
 #SBATCH --time=24:00:00
-#SBATCH --array=0-2
+#SBATCH --array=0-0
 #SBATCH --output=logs/test_seed%a_%j.out
 #SBATCH --error=logs/test_seed%a_%j.err
 
@@ -34,11 +34,9 @@ N_J=20
 N_M=10
 DATA_SOURCE=SD1
 
-# scheduling-aware graph coarsening (SAGC) -- must match run_train.sh
-POOLING_TYPE=sagc
-POOLING_RATIO=2.0
-K_MODE=jobs
-export RUN_TAG=sagc
+# eligible-operation pooling (keeps only eligible operations) -- must match run_train.sh
+POOLING_TYPE=eligible
+export RUN_TAG=eligible
 
 MODEL_PATH="./trained_network/${DATA_SOURCE}/${N_J}x${N_M}+${RUN_TAG}_seed${SEED}.pth"
 
@@ -48,12 +46,10 @@ if [[ ! -f "${MODEL_PATH}" ]]; then
     exit 1
 fi
 
-echo "=== Testing seed=${SEED} model=${MODEL_PATH} pooling=${POOLING_TYPE} ratio=${POOLING_RATIO} k_mode=${K_MODE} ==="
+echo "=== Testing seed=${SEED} model=${MODEL_PATH} pooling=${POOLING_TYPE} ==="
 srun nvidia-smi || true
 
 exec srun "${PYTHON}" run_test_suite.py \
     --seeds "${SEED}" \
     --pooling_type "${POOLING_TYPE}" \
-    --pooling_ratio "${POOLING_RATIO}" \
-    --k_mode "${K_MODE}" \
     --device cuda

@@ -1,7 +1,7 @@
 from common_utils import nonzero_averaging
 from model.attention_layer import *
 from model.sub_layers import *
-from model.sagc_pool import SAGCPoolDAN
+from model.eligible_pool import EligiblePool
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -67,23 +67,14 @@ class DualAttentionNetwork(nn.Module):
                 )
             )
 
-        # SAGC pooling, inserted between DAN layer 0 and layer 1.
+        # Eligible-operation pooling, inserted between DAN layer 0 and layer 1.
         # 'nopooling' keeps the original DAN untouched.
         self.pooling_type = getattr(config, 'pooling_type', 'nopooling')
-        self.sagc = None
-        if self.pooling_type == 'sagc':
+        self.eligible_pool = None
+        if self.pooling_type == 'eligible':
             assert self.num_dan_layers >= 2, \
-                "SAGC needs at least two DAN layers (pooling sits between layer 0 and 1)"
-            # embedding dim after layer 0: heads are concatenated on all
-            # layers except the last one
-            if self.num_dan_layers > 1:
-                embed_dim_after_l0 = self.num_heads_OAB[0] * self.output_dim_per_layer[0]
-            else:
-                embed_dim_after_l0 = self.output_dim_per_layer[0]
-            self.sagc = SAGCPoolDAN(embed_dim=embed_dim_after_l0,
-                                    ope_feat_dim=self.fea_j_input_dim,
-                                    ratio=getattr(config, 'pooling_ratio', 0.6),
-                                    k_mode=getattr(config, 'k_mode', 'ops'))
+                "eligible pooling needs at least two DAN layers (pooling sits between layer 0 and 1)"
+            self.eligible_pool = EligiblePool()
 
     def forward(self, fea_j, op_mask, candidate, fea_m, mch_mask, comp_idx,
                 opes_appertain=None, deleted_op_nodes=None, eligible_opes=None):
@@ -97,22 +88,21 @@ class DualAttentionNetwork(nn.Module):
         :param comp_idx: a tensor with shape [sz_b, M, M, J] used for computing T_E
                     the value of comp_idx[i, k, q, j] (any i) means whether
                     machine $M_k$ and $M_q$ are competing for candidate[i,j]
-        :param opes_appertain: job index per operation [sz_b, N], required for SAGC
-        :param deleted_op_nodes: bool [sz_b, N], completed/padding nodes, required for SAGC
-        :param eligible_opes: bool [sz_b, N], protected candidate nodes, required for SAGC
+        :param opes_appertain: job index per operation [sz_b, N], required for eligible pooling
+        :param deleted_op_nodes: bool [sz_b, N], completed/padding nodes, required for eligible pooling
+        :param eligible_opes: bool [sz_b, N], protected candidate nodes, required for eligible pooling
         :return:
             fea_j.shape = [sz_b, k, output_dim] (k = N without pooling)
             fea_m.shape = [sz_b, M, output_dim]
             fea_j_global.shape = [sz_b, output_dim]
             fea_m_global.shape = [sz_b, output_dim]
             candidate_out: candidate indices valid for fea_j
-                           (remapped to pooled positions when SAGC is active)
+                           (remapped to pooled positions when eligible pooling is active)
         """
         sz_b, M, _, J = comp_idx.size()
 
         comp_idx_for_mul = comp_idx.reshape(sz_b, -1, J)
 
-        raw_fea_j = fea_j
         candidate_out = candidate
 
         for layer in range(self.num_dan_layers):
@@ -126,13 +116,13 @@ class DualAttentionNetwork(nn.Module):
             fea_j = self.op_attention_blocks[layer](fea_j, op_mask)
             fea_m = self.mch_attention_blocks[layer](fea_m, mch_mask, comp_val_layer)
 
-            if self.sagc is not None and layer == 0:
+            if self.eligible_pool is not None and layer == 0:
                 if opes_appertain is None or deleted_op_nodes is None or eligible_opes is None:
                     raise ValueError(
-                        "SAGC is enabled but opes_appertain / deleted_op_nodes / "
+                        "Eligible pooling is enabled but opes_appertain / deleted_op_nodes / "
                         "eligible_opes were not passed to the model")
-                fea_j, op_mask, candidate_out, _ = self.sagc(
-                    fea_j, raw_fea_j, candidate_out, opes_appertain,
+                fea_j, op_mask, candidate_out, _ = self.eligible_pool(
+                    fea_j, candidate_out, opes_appertain,
                     eligible_opes, deleted_op_nodes)
 
         fea_j_global = nonzero_averaging(fea_j)

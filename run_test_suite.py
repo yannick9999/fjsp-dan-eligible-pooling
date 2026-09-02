@@ -18,8 +18,8 @@ N_J, N_M = 20, 10
 TEST_ROOT = './data/data_test'
 
 # optional tag to keep a run's models/results separate from the baseline
-# (e.g. RUN_TAG=sagc -> trained_network/SD1/20x10+sagc_seed0.pth,
-# ./sagc_experiment/seed0/...), matching train.py's
+# (e.g. RUN_TAG=eligible -> trained_network/SD1/20x10+eligible_seed0.pth,
+# ./eligible_experiment/seed0/...), matching train.py's
 # --model_suffix "${RUN_TAG}_seed${SEED}" convention and the {method}_experiment
 # layout expected by model_comparison_experiment/common.py
 RUN_TAG = os.environ.get('RUN_TAG', '')

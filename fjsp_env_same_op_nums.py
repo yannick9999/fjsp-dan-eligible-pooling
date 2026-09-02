@@ -170,7 +170,7 @@ class FJSPEnvForSameOpNums:
         # the index of last operation of each job ([E,J])
         self.job_last_op_id = self.job_first_op_id + self.job_length - 1
 
-        # job index per operation ([E, N]), static, needed for SAGC pooling
+        # job index per operation ([E, N]), static, needed for eligible pooling
         self.opes_appertain = np.stack(
             [np.repeat(np.arange(self.number_of_jobs), self.job_length[k])
              for k in range(self.number_of_envs)])
