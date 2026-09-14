@@ -5,3 +5,4 @@ model path: ./DANIEL_FJSP/trained_network/SD1/20x10+seed2		training time: 2163.9
 model path: ./DANIEL_FJSP/trained_network/SD1/20x10+sagc_seed0		training time: 2301.91		 local time: 20260826_200208
 model path: ./DANIEL_FJSP/trained_network/SD1/20x10+sagc_seed1		training time: 2340.73		 local time: 20260826_200411
 model path: ./DANIEL_FJSP/trained_network/SD1/20x10+sagc_seed2		training time: 2295.94		 local time: 20260829_073108
+model path: ./DANIEL_FJSP/trained_network/SD1/20x10+eligible_seed0		training time: 2297.74		 local time: 20260904_055157
